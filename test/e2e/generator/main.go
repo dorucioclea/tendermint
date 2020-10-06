@@ -1,10 +1,18 @@
+//nolint: gosec
 package main
 
 import (
+	"fmt"
+	"math/rand"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/tendermint/tendermint/libs/log"
+)
+
+const (
+	randomSeed int64 = 4827085738
 )
 
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
@@ -27,6 +35,21 @@ func NewCLI() *CLI {
 		SilenceUsage:  true,
 		SilenceErrors: true, // we'll output them ourselves in Run()
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			dir := filepath.Join("networks", "generated")
+			err := os.MkdirAll(dir, 0755)
+			if err != nil {
+				return err
+			}
+
+			r := rand.New(rand.NewSource(randomSeed))
+			manifests := Generate(r)
+			for i, manifest := range manifests {
+				err = manifest.Save(filepath.Join(dir, fmt.Sprintf("%v.toml", i)))
+				if err != nil {
+					return err
+				}
+			}
+
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
